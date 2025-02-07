@@ -46,45 +46,46 @@ from scipy.optimize import linprog
 
 
 def remove_redundant_constraints(Hp, hp):
-    """RIt removes ridundant constraints from the system: Hp * x <= hp"""
+    # """RIt removes ridundant constraints from the system: Hp * x <= hp"""
 
-    # Controlla se il sistema è infattibile prima di iniziare
-    if Hp.size == 0 or hp.size == 0:
-        print("The system is empy")
-        return np.empty((0, Hp.shape[1] if Hp.ndim == 2 else 0)), np.empty((0,))
+    # # Controlla se il sistema è infattibile prima di iniziare
+    # if Hp.size == 0 or hp.size == 0:
+    #     print("The system is empy")
+    #     return np.empty((0, Hp.shape[1] if Hp.ndim == 2 else 0)), np.empty((0,))
 
-    if not set_is_feasible(Hp, hp):
-        print(" Error: The set of given inequalities is infeasible.")
-        return np.empty((0, Hp.shape[1])), np.empty((0,))
+    # if not set_is_feasible(Hp, hp):
+    #     print(" Error: The set of given inequalities is infeasible.")
+    #     return np.empty((0, Hp.shape[1])), np.empty((0,))
 
-    num_constraints, dimension = Hp.shape
-    epsilon = 1e-6
-    non_redundant_Hp = []
-    non_redundant_hp = []
+    # num_constraints, dimension = Hp.shape
+    # epsilon = 1e-6
+    # non_redundant_Hp = []
+    # non_redundant_hp = []
 
-    for i in range(num_constraints):
-        Hp_active = Hp[i]
-        hp_active = hp[i]
+    # for i in range(num_constraints):
+    #     Hp_active = Hp[i]
+    #     hp_active = hp[i]
 
-        # Remove the i-th constraint
-        Hp_truncated = np.delete(Hp, i, axis=0)
-        hp_truncated = np.delete(hp, i, axis=0)
+    #     # Remove the i-th constraint
+    #     Hp_truncated = np.delete(Hp, i, axis=0)
+    #     hp_truncated = np.delete(hp, i, axis=0)
 
-        # Solve the LP problem
-        res = linprog(-Hp_active, A_ub=Hp_truncated, b_ub=hp_truncated, method='highs')
+    #     # Solve the LP problem
+    #     res = linprog(-Hp_active, A_ub=Hp_truncated, b_ub=hp_truncated, method='highs')
 
-        # Controllo aggiuntivo per evitare errori
-        if res.status == 2 or res.fun is None:
-            # print(f"Constraint {i} is invalid or LP infeasible, keeping it.")
-            non_redundant_Hp.append(Hp_active)
-            non_redundant_hp.append(hp_active)
-        elif -res.fun > hp_active + epsilon:
-            non_redundant_Hp.append(Hp_active)
-            non_redundant_hp.append(hp_active)
+    #     # Controllo aggiuntivo per evitare errori
+    #     if res.status == 2 or res.fun is None:
+    #         # print(f"Constraint {i} is invalid or LP infeasible, keeping it.")
+    #         non_redundant_Hp.append(Hp_active)
+    #         non_redundant_hp.append(hp_active)
+    #     elif -res.fun > hp_active + epsilon:
+    #         non_redundant_Hp.append(Hp_active)
+    #         non_redundant_hp.append(hp_active)
 
-    # Convertiamo gli array in formato bidimensionale anche se vuoti
-    non_redundant_Hp = np.array(non_redundant_Hp).reshape(-1, dimension) if non_redundant_Hp else np.empty((0, dimension))
-    non_redundant_hp = np.array(non_redundant_hp).reshape(-1) if non_redundant_hp else np.empty((0,))
+    # # Convertiamo gli array in formato bidimensionale anche se vuoti
+    # non_redundant_Hp = np.array(non_redundant_Hp).reshape(-1, dimension) if non_redundant_Hp else np.empty((0, dimension))
+    # non_redundant_hp = np.array(non_redundant_hp).reshape(-1) if non_redundant_hp else np.empty((0,))
 
+    non_redundant_Hp, non_redundant_hp = Hp, hp
     return non_redundant_Hp, non_redundant_hp
 

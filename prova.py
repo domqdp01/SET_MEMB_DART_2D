@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # # # # ============================================================================================== # # #
 
 
-# file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_18_2024_14_43_23.csv'
+file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_18_2024_14_43_23.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_18_2024_14_52_47.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_10_2025_14_35_50.csv'  # noise_up = 0.05
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_10_2025_14_39_57.csv'  # noise_up = 0.5
@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_14_2025_18_20_50.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_13_2025_17_04_25.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_17_2025_14_54_47.csv'
-file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_20_2025_10_46_12.csv'
+# file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_20_2025_10_46_12.csv'
 df = pd.read_csv(file_path)
 
 # Load data
@@ -62,7 +62,7 @@ n_state = 3                       # number of states
 I_n = np.eye(n_state, dtype=int)  # dim (3,3)
 H = np.vstack([I_n, -I_n])        # dim (6,3)
 
-d_up = 0.003                 # noise upper bound
+d_up = 0.003                # noise upper bound
 d_low = - d_up                    # noise lower bound
 h_d = np.concatenate([
     np.full((n_state, 1), d_up),
@@ -92,6 +92,18 @@ mu_2_values = []
 
 starting_instant = 3
 ending_instant = len(df)
+
+F_0_minus2, G_0_minus2 = continuous_matrices_2(starting_instant - 2, steering_input, vx, vy, w, tau) # Maps F and G in continuos time
+delta_minus_2 = steer_angle(steering_input[starting_instant - 2])                                    # Steering angle
+x_cont_minus_2 = np.array([[vx[starting_instant -2]], [vy[starting_instant -2]], [w[starting_instant -2]]])                # state vector in continuous time
+u_cont_minus_2 = np.array([[tau[starting_instant -2]], [delta_minus_2]]) 
+autonomous_func_minus_2 = F_0_minus2
+input_func_minus_2 = G_0_minus2
+f_dicr_minus_2, g_discr_minus_2, state_discr_minus_2 = compute_discrete_function_terms_single_step_euler_2(x_cont_minus_2, u_cont_minus_2, autonomous_func_minus_2, input_func_minus_2)
+A_i_minus2 = - H @ g_discr_minus_2
+b_i_minus2 = h_d - H @ state_discr_minus_2 + H @ f_dicr_minus_2
+
+
 for index in range(starting_instant, ending_instant):
     
     # # # # ============================================================================================== # # #
@@ -99,10 +111,6 @@ for index in range(starting_instant, ending_instant):
     # # # #                                          𝚫_k                                                   # # #
     # # # # ============================================================================================== # # #
     
-    F_0_minus2, G_0_minus2 = continuous_matrices_2(index - 2, steering_input, vx, vy, w, tau) # Maps F and G in continuos time
-    delta_minus_2 = steer_angle(steering_input[index - 2])                                    # Steering angle
-    x_cont_minus_2 = np.array([[vx[index -2]], [vy[index -2]], [w[index -2]]])                # state vector in continuous time
-    u_cont_minus_2 = np.array([[tau[index -2]], [delta_minus_2]])                             # imput vector in continuous time
     
     # Istant i minus 1
     F_0_minus1, G_0_minus1 = continuous_matrices_2(index - 1, steering_input, vx, vy, w, tau)
@@ -111,24 +119,17 @@ for index in range(starting_instant, ending_instant):
     u_cont_minus_1 = np.array([[tau[index -1]], [delta_minus_2]])
 
     # Changing names
-    autonomous_func_minus_2 = F_0_minus2
-    input_func_minus_2 = G_0_minus2
+
     autonomous_func_minus_1 = F_0_minus1
     input_func_minus_1 = G_0_minus1
 
     # Maps in discrete time
-    f_dicr_minus_2, g_discr_minus_2, state_discr_minus_2 = compute_discrete_function_terms_single_step_euler_2(x_cont_minus_2, u_cont_minus_2, autonomous_func_minus_2, input_func_minus_2)
     f_dicr_minus_1, g_discr_minus_1, state_discr_minus_1 = compute_discrete_function_terms_single_step_euler_2(x_cont_minus_1, u_cont_minus_1, autonomous_func_minus_1, input_func_minus_1)
 
     ## The inequality to solve is: - H * G * mu <= h_d - H * x_discr + H * F
     ## Grouping the terms: A = - H * G and b = h_d - H * x_discr + H * F
     ## Finally:  A * mu <= blen(df)
 
-    if index == starting_instant:
-        A_i_minus2 = - H @ g_discr_minus_2
-        b_i_minus2 = h_d - H @ state_discr_minus_2 + H @ f_dicr_minus_2
-    else:
-        pass
 
     A_i_minus1 = - H @ g_discr_minus_1
     b_i_minus1 = h_d - H @ state_discr_minus_1 + H @ f_dicr_minus_1
@@ -140,26 +141,39 @@ for index in range(starting_instant, ending_instant):
     # print(f"A_shape = {A.shape}, b_shape = {b.shape}")
 
     vertex = compute_vertices(A, b)
-    
+    vertex_actual = compute_vertices(A_i_minus1, b_i_minus1)
     # Cicles for checking vetex vector dimension 
 
     if len(vertex) == 0:
         # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
         continue  # Skip this iteration to avoid errors
     vertex = np.array(vertex)
+    # print(vertex.shape)
+
+    if len(vertex_actual) == 0:
+        continue
+    vertex_actual = np.array(vertex_actual)
 
     if vertex.shape[1] == 0:
         # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
+        continue
+
+    if vertex_actual.shape[1] == 0:
         continue
 
     if vertex.ndim > 2:
         vertex = vertex.squeeze(-1)
     # print(f"Debug: vertex.shape = {vertex.shape}")
 
+    if vertex_actual.ndim > 2:
+        vertex_actual = vertex_actual.squeeze(-1)
+
     Hp, hp = underapproximate_convex_polytope(vertex, direction)
+    Hp_actual, hp_actual = underapproximate_convex_polytope(vertex_actual, direction)
 
     # Avoiding divide to zero
     mu_1_up = mu_1_low = mu_2_up = mu_2_low = None  
+    mu_actual_1_up = mu_actual_1_low = mu_actual_2_up = mu_actual_2_low = None
 
     if Hp.shape[0] > 0 and hp.shape[0] > 0:
         mu_1_up = hp[0] / Hp[0, 0] if Hp[0, 0] != 0 else None  # Avoid inf
@@ -173,33 +187,57 @@ for index in range(starting_instant, ending_instant):
     if Hp.shape[0] > 3 and hp.shape[0] > 3:
         mu_2_low = hp[3] / Hp[3, 1] if Hp[3, 1] != 0 else None  # Avoid None
 
+
+    if Hp_actual.shape[0] > 0 and hp_actual.shape[0] > 0:
+        mu_actual_1_up = hp_actual[0] / Hp_actual[0, 0] if Hp_actual[0, 0] != 0 else None  # Avoid inf
+
+    if Hp_actual.shape[0] > 1 and hp_actual.shape[0] > 1:
+        mu_actual_1_low = hp_actual[1] / Hp_actual[1, 0] if Hp_actual[1, 0] != 0 else None  # Avoid inf
+
+    if Hp_actual.shape[0] > 2 and hp_actual.shape[0] > 2:
+        mu_actual_2_up = hp_actual[2] / Hp_actual[2, 1] if Hp_actual[2, 1] != 0 else None  # Avoid inf
+
+    if Hp_actual.shape[0] > 3 and hp_actual.shape[0] > 3:
+        mu_actual_2_low = hp_actual[3] / Hp_actual[3, 1] if Hp_actual[3, 1] != 0 else None  # Avoid None
+
     print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
+    # print(f"Iteration {index} --> mu_1_act = [{mu_actual_1_low}, {mu_actual_1_up}], mu_2_act = [{mu_actual_2_low}, {mu_actual_2_up}]\n")
+    # print(f"Hp_act = {hp}\n"
+    #       f"hp_act = {hp_actual}\n")
     
     if None not in [mu_1_low, mu_1_up, mu_2_low, mu_2_up]:
         ax.clear()
         ax.set_xlabel(r'$\mu_f$')
         ax.set_ylabel(r'$\mu_r$')
-        ax.set_xlim(0.7, 1.4)
-        ax.set_ylim(0.7, 1.4)
+        ax.set_xlim(0.6, 1.5)
+        ax.set_ylim(0.6, 1.5)
         ax.set_title(
                     rf"$\mu_f \in [{mu_1_low:.3f}, {mu_1_up:.3f}]$" "\n" 
                     rf"$\mu_r \in [{mu_2_low:.3f}, {mu_2_up:.3f}]$"
                     )
 
         ax.scatter(vertex[:, 0], vertex[:, 1], color='blue', label='Vertices')
+        ax.scatter(vertex_actual[:, 0], vertex_actual[:, 1], color='red', label='Vertices_act')
 
         rect_x = [mu_1_low, mu_1_up, mu_1_up, mu_1_low, mu_1_low]
         rect_y = [mu_2_low, mu_2_low, mu_2_up, mu_2_up, mu_2_low]
-        ax.plot(rect_x, rect_y, 'g-')
-        ax.fill_betweenx([mu_2_low, mu_2_up], mu_1_low, mu_1_up, color='green', alpha=0.5, label=r'$\theta_k$')
+        rect_x_actual = [mu_actual_1_low, mu_actual_1_up, mu_actual_1_up, mu_actual_1_low, mu_actual_1_low]
+        rect_y_actual = [mu_actual_2_low, mu_actual_2_low, mu_actual_2_up, mu_actual_2_up, mu_actual_2_low]
+
+        ax.plot(rect_x, rect_y, 'g-', rect_x_actual, rect_y_actual, 'b-')
+        ax.fill_betweenx([mu_2_low, mu_2_up], mu_1_low, mu_1_up, color='green', alpha=0.9, label=r'$\theta_k$')
+        if None not in [mu_actual_2_low, mu_actual_2_up, mu_actual_1_low, mu_actual_1_up]:
+            ax.fill_betweenx([mu_actual_2_low, mu_actual_2_up], mu_actual_1_low, mu_actual_1_up, color='blue', alpha=0.2, label=r'$\Delta_k$')
 
         ax.legend()
-        plt.pause(0.00005)  
+        plt.pause(0.00000005)  
 
 
     A_i_minus2 = Hp
     b_i_minus2 = hp
     b_i_minus2 = np.atleast_2d(b_i_minus2).T
+    # print(A_i_minus2.shape)
+    # print(b_i_minus2.shape)
 
 plt.ioff()
 plt.show()

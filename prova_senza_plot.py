@@ -75,10 +75,23 @@ n_param = 2
 
 # Offline direction evaluation
 direction =  generate_orthogonal_directions(n_param)
-print(direction)
+# print(direction)
 
-starting_instant = 3
-ending_instant = len(df)
+starting_instant = 400
+ending_instant = 460
+
+
+F_0_minus2, G_0_minus2 = continuous_matrices_2(starting_instant - 2, steering_input, vx, vy, w, tau) # Maps F and G in continuos time
+delta_minus_2 = steer_angle(steering_input[starting_instant - 2])                                    # Steering angle
+x_cont_minus_2 = np.array([[vx[starting_instant -2]], [vy[starting_instant -2]], [w[starting_instant -2]]])                # state vector in continuous time
+u_cont_minus_2 = np.array([[tau[starting_instant -2]], [delta_minus_2]])                             # imput vector in continuous time
+autonomous_func_minus_2 = F_0_minus2
+input_func_minus_2 = G_0_minus2
+f_dicr_minus_2, g_discr_minus_2, state_discr_minus_2 = compute_discrete_function_terms_single_step_euler_2(x_cont_minus_2, u_cont_minus_2, autonomous_func_minus_2, input_func_minus_2)
+
+A_i_minus2 = - H @ g_discr_minus_2
+b_i_minus2 = h_d - H @ state_discr_minus_2 + H @ f_dicr_minus_2
+
 for index in range(starting_instant, ending_instant):
     
     # # # # ============================================================================================== # # #
@@ -86,11 +99,8 @@ for index in range(starting_instant, ending_instant):
     # # # #                                          𝚫_k                                                   # # #
     # # # # ============================================================================================== # # #
     
-    F_0_minus2, G_0_minus2 = continuous_matrices_2(index - 2, steering_input, vx, vy, w, tau) # Maps F and G in continuos time
-    delta_minus_2 = steer_angle(steering_input[index - 2])                                    # Steering angle
-    x_cont_minus_2 = np.array([[vx[index -2]], [vy[index -2]], [w[index -2]]])                # state vector in continuous time
-    u_cont_minus_2 = np.array([[tau[index -2]], [delta_minus_2]])                             # imput vector in continuous time
-    
+               
+    print("Starting cycle")
     # Istant i minus 1
     F_0_minus1, G_0_minus1 = continuous_matrices_2(index - 1, steering_input, vx, vy, w, tau)
     delta_minus_1 = steer_angle(steering_input[index - 1])
@@ -98,24 +108,16 @@ for index in range(starting_instant, ending_instant):
     u_cont_minus_1 = np.array([[tau[index -1]], [delta_minus_2]])
 
     # Changing names
-    autonomous_func_minus_2 = F_0_minus2
-    input_func_minus_2 = G_0_minus2
+    
     autonomous_func_minus_1 = F_0_minus1
     input_func_minus_1 = G_0_minus1
 
     # Maps in discrete time
-    f_dicr_minus_2, g_discr_minus_2, state_discr_minus_2 = compute_discrete_function_terms_single_step_euler_2(x_cont_minus_2, u_cont_minus_2, autonomous_func_minus_2, input_func_minus_2)
     f_dicr_minus_1, g_discr_minus_1, state_discr_minus_1 = compute_discrete_function_terms_single_step_euler_2(x_cont_minus_1, u_cont_minus_1, autonomous_func_minus_1, input_func_minus_1)
 
     ## The inequality to solve is: - H * G * mu <= h_d - H * x_discr + H * F
     ## Grouping the terms: A = - H * G and b = h_d - H * x_discr + H * F
     ## Finally:  A * mu <= blen(df)
-
-    if index == starting_instant:
-        A_i_minus2 = - H @ g_discr_minus_2
-        b_i_minus2 = h_d - H @ state_discr_minus_2 + H @ f_dicr_minus_2
-    else:
-        pass
 
     A_i_minus1 = - H @ g_discr_minus_1
     b_i_minus1 = h_d - H @ state_discr_minus_1 + H @ f_dicr_minus_1
@@ -127,9 +129,11 @@ for index in range(starting_instant, ending_instant):
     # print(f"A_shape = {A.shape}, b_shape = {b.shape}")
 
     vertex = compute_vertices(A, b)
-    
+    vertex_i = compute_vertices(A_i_minus1, b_i_minus1)
+    vertex_i_minus1 = compute_vertices(A_i_minus2, b_i_minus2)
     # Cicles for checking vetex vector dimension 
 
+    ## TOTAL 
     if len(vertex) == 0:
         # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
         continue  # Skip this iteration to avoid errors
@@ -143,7 +147,41 @@ for index in range(starting_instant, ending_instant):
         vertex = vertex.squeeze(-1)
     # print(f"Debug: vertex.shape = {vertex.shape}")
 
+    ## ONLY INDEX MINUS 1
+    if len(vertex_i) == 0:
+        # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
+        continue  # Skip this iteration to avoid errors
+    vertex_i = np.array(vertex_i)
+
+    if vertex_i.shape[1] == 0:
+        # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
+        continue
+
+    if vertex_i.ndim > 2:
+        vertex_i = vertex_i.squeeze(-1)
+    # print(f"Debug: vertex.shape = {vertex.shape}")
+
+    ## ONLY INDEX MINUS 2
+    if len(vertex_i_minus1) == 0:
+        # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
+        continue  # Skip this iteration to avoid errors
+    vertex_i_minus1 = np.array(vertex_i_minus1)
+
+    if vertex_i_minus1.shape[1] == 0:
+        # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
+        continue
+
+    if vertex_i_minus1.ndim > 2:
+        vertex_i_minus1 = vertex_i_minus1.squeeze(-1)
+    # print(f"Debug: vertex.shape = {vertex.shape}")
+    
     Hp, hp = underapproximate_convex_polytope(vertex, direction)
+
+    print(f"Iteration {index}: Hp prima della funzione:\n{Hp}")
+    print(f"Iteration {index}: hp prima della funzione:\n{hp}")
+    Hp_act, hp_act = underapproximate_convex_polytope(vertex_i, direction)
+
+    Hp_act_minus1, hp_act_minus1 = underapproximate_convex_polytope(vertex_i_minus1, direction)
 
     # Controllo per evitare errori di indice e divisione per zero
     mu_1_up = mu_1_low = mu_2_up = mu_2_low = None  
@@ -160,12 +198,93 @@ for index in range(starting_instant, ending_instant):
     if Hp.shape[0] > 3 and hp.shape[0] > 3:
         mu_2_low = hp[3] / Hp[3, 1] if Hp[3, 1] != 0 else None  # Evita None
 
-    # print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
+    mu_i_1_up = mu_i_1_low = mu_i_2_up = mu_i_2_low = None  
+
+    if Hp_act.shape[0] > 0 and hp_act.shape[0] > 0:
+        mu_i_1_up = hp_act[0] / Hp_act[0, 0] if Hp_act[0, 0] != 0 else None  # Evita inf
+
+    if Hp_act.shape[0] > 1 and hp_act.shape[0] > 1:
+        mu_i_1_low = hp_act[1] / Hp_act[1, 0] if Hp_act[1, 0] != 0 else None  # Evita inf
+
+    if Hp_act.shape[0] > 2 and hp_act.shape[0] > 2:
+        mu_i_2_up = hp_act[2] / Hp_act[2, 1] if Hp_act[2, 1] != 0 else None  # Evita inf
+
+    if Hp_act.shape[0] > 3 and hp_act.shape[0] > 3:
+        mu_i_2_low = hp_act[3] / Hp_act[3, 1] if Hp_act[3, 1] != 0 else None  # Evita None
+
+    mu_i_minus1_1_up = mu_i_minus1_1_low = mu_i_minus1_2_up = mu_i_minus1_2_low = None  
+    
+    print("Printing results\n")
+    print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
+    print(f"mu_i_1 = [{mu_i_1_low}, {mu_i_1_up}], mu_i_2 = [{mu_i_2_low}, {mu_i_2_up}]")
+
+    if index != starting_instant:
+        if Hp_act_minus1.shape[0] > 0 and hp_act_minus1.shape[0] > 0:
+            mu_i_minus1_1_up = hp_act_minus1[0] / Hp_act_minus1[0, 0] if Hp_act_minus1[0, 0] != 0 else None  # Evita inf
+
+        if Hp_act_minus1.shape[0] > 1 and hp_act_minus1.shape[0] > 1:
+            mu_i_minus1_1_low = hp_act_minus1[1] / Hp_act_minus1[1, 0] if Hp_act_minus1[1, 0] != 0 else None  # Evita inf
+
+        if Hp_act_minus1.shape[0] > 2 and hp_act_minus1.shape[0] > 2:
+            mu_i_minus1_2_up = hp_act_minus1[2] / Hp_act_minus1[2, 1] if Hp_act_minus1[2, 1] != 0 else None  # Evita inf
+
+        if Hp_act_minus1.shape[0] > 3 and hp_act_minus1.shape[0] > 3:
+            mu_i_minus1_2_low = hp_act_minus1[3] / Hp_act_minus1[3, 1] if Hp_act_minus1[3, 1] != 0 else None  # Evita None
+
+        print(f"mu_i_minus1_1 = [{mu_i_minus1_1_low}, {mu_i_minus1_1_up}], mu_i_minus1_2 = [{mu_i_minus1_2_low}, {mu_i_minus1_2_up}]\n")
+
+    else:
+        continue
+
+    
+
+    if index == 453 or index == 454:
+        print(f"\n🚀 Iteration {index}: Debugging Hp, hp, and vertices")
+
+        print(f"Hp shape: {Hp.shape}, hp shape: {hp.shape}")
+        print(f"Hp:\n{Hp}")
+        print(f"hp:\n{hp}")
+
+        print(f"vertex.shape: {vertex.shape}")
+        print(f"vertex:\n{vertex}")
+
+        print(f"vertex_i.shape: {vertex_i.shape}")
+        print(f"vertex_i:\n{vertex_i}")
+
+        print(f"mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
+        print(f"mu_i_minus1_1 = [{mu_i_minus1_1_low}, {mu_i_minus1_1_up}], mu_i_minus1_2 = [{mu_i_minus1_2_low}, {mu_i_minus1_2_up}]")
+
+
+        print(f"A_i_minus1.shape: {A_i_minus1.shape}, b_i_minus1.shape: {b_i_minus1.shape}")
+        print(f"A_i_minus1:\n{A_i_minus1}")
+        print(f"b_i_minus1:\n{b_i_minus1}")
+
+        print(f"A_i_minus2.shape: {A_i_minus2.shape}, b_i_minus.shape: {b_i_minus2.shape}")
+        print(f"A_i_minus2:\n{A_i_minus2}")
+        print(f"b_i_minus2:\n{b_i_minus2}")
+
+        print(f"A.shape: {A.shape}, b.shape: {b.shape}")
+        print(f"A:\n{A}")
+        print(f"b:\n{b}")
+
+    condition_number = np.linalg.cond(A)
+    print(f"Iteration {index}: Condition number of A = {condition_number}")
+    print(f"Iteration {index}: Directions used: {direction}")
+    print(f"Iteration {index}: Vertices = {compute_vertices(Hp, hp)}")
+
+    print(f"Iteration {index}: Verifica intersezione manuale")
+    print(f"Expected intersection: X[{max(mu_i_1_low, mu_i_minus1_1_low)}, {min(mu_i_1_up, mu_i_minus1_1_up)}]")
+    print(f"Computed theta_i: X[{mu_1_low}, {mu_1_up}]")
+    print(f"Expected intersection: Y[{max(mu_i_2_low, mu_i_minus1_2_low)}, {min(mu_i_2_up, mu_i_minus1_2_up)}]")
+    print(f"Computed theta_i: Y[{mu_2_low}, {mu_2_up}]")
+    vertex_debug = compute_vertices(A, b)
+    print(f"Iteration {index}: vertex_debug = {vertex_debug}")
 
 
     A_i_minus2 = Hp
     b_i_minus2 = hp
     b_i_minus2 = np.atleast_2d(b_i_minus2).T
+    print(b_i_minus2.shape)
 
 
 
