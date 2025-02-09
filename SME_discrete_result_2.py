@@ -126,6 +126,11 @@ for index in range(starting_instant, ending_instant):
 
     # print(f"A_shape = {A.shape}, b_shape = {b.shape}")
 
+    # # # # ============================================================================================== # # #
+    # # # #                                     FEASIBLE PARAMETER SET                                     # # #
+    # # # #                                          θ_k                                                   # # #
+    # # # # ============================================================================================== # # #
+
     vertex = compute_vertices(A, b)
     
     # Cicles for checking vetex vector dimension 
@@ -160,7 +165,7 @@ for index in range(starting_instant, ending_instant):
     if Hp.shape[0] > 3 and hp.shape[0] > 3:
         mu_2_low = hp[3] / Hp[3, 1] if Hp[3, 1] != 0 else None  # Evita None
 
-    # print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
+    print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
 
 
     A_i_minus2 = Hp

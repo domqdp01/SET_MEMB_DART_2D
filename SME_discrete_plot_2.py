@@ -139,6 +139,11 @@ for index in range(starting_instant, ending_instant):
 
     # print(f"A_shape = {A.shape}, b_shape = {b.shape}")
 
+    # # # # ============================================================================================== # # #
+    # # # #                                     FEASIBLE PARAMETER SET                                     # # #
+    # # # #                                          θ_k                                                   # # #
+    # # # # ============================================================================================== # # #
+
     vertex = compute_vertices(A, b)
     
     # Cicles for checking vetex vector dimension 

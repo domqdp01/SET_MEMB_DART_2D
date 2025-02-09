@@ -77,8 +77,8 @@ n_param = 2
 direction =  generate_orthogonal_directions(n_param)
 # print(direction)
 
-starting_instant = 400
-ending_instant = 460
+starting_instant = 500
+ending_instant = 560
 
 
 F_0_minus2, G_0_minus2 = continuous_matrices_2(starting_instant - 2, steering_input, vx, vy, w, tau) # Maps F and G in continuos time
@@ -100,7 +100,7 @@ for index in range(starting_instant, ending_instant):
     # # # # ============================================================================================== # # #
     
                
-    print("Starting cycle")
+    # print("Starting cycle")
     # Istant i minus 1
     F_0_minus1, G_0_minus1 = continuous_matrices_2(index - 1, steering_input, vx, vy, w, tau)
     delta_minus_1 = steer_angle(steering_input[index - 1])
@@ -126,8 +126,6 @@ for index in range(starting_instant, ending_instant):
     A = np.concatenate([A_i_minus1, A_i_minus2])
     b = np.concatenate([b_i_minus1, b_i_minus2])
 
-    # print(f"A_shape = {A.shape}, b_shape = {b.shape}")
-
     vertex = compute_vertices(A, b)
     vertex_i = compute_vertices(A_i_minus1, b_i_minus1)
     vertex_i_minus1 = compute_vertices(A_i_minus2, b_i_minus2)
@@ -135,50 +133,39 @@ for index in range(starting_instant, ending_instant):
 
     ## TOTAL 
     if len(vertex) == 0:
-        # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
         continue  # Skip this iteration to avoid errors
     vertex = np.array(vertex)
 
     if vertex.shape[1] == 0:
-        # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
         continue
 
     if vertex.ndim > 2:
         vertex = vertex.squeeze(-1)
-    # print(f"Debug: vertex.shape = {vertex.shape}")
 
     ## ONLY INDEX MINUS 1
     if len(vertex_i) == 0:
-        # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
         continue  # Skip this iteration to avoid errors
     vertex_i = np.array(vertex_i)
 
     if vertex_i.shape[1] == 0:
-        # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
         continue
 
     if vertex_i.ndim > 2:
         vertex_i = vertex_i.squeeze(-1)
-    # print(f"Debug: vertex.shape = {vertex.shape}")
-
     ## ONLY INDEX MINUS 2
+
     if len(vertex_i_minus1) == 0:
-        # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
         continue  # Skip this iteration to avoid errors
     vertex_i_minus1 = np.array(vertex_i_minus1)
 
     if vertex_i_minus1.shape[1] == 0:
-        # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
         continue
 
     if vertex_i_minus1.ndim > 2:
         vertex_i_minus1 = vertex_i_minus1.squeeze(-1)
-    # print(f"Debug: vertex.shape = {vertex.shape}")
-    
+        
     Hp, hp = underapproximate_convex_polytope(vertex, direction)
 
-    print(f"Iteration {index}: Hp prima della funzione:\n{Hp}")
-    print(f"Iteration {index}: hp prima della funzione:\n{hp}")
     Hp_act, hp_act = underapproximate_convex_polytope(vertex_i, direction)
 
     Hp_act_minus1, hp_act_minus1 = underapproximate_convex_polytope(vertex_i_minus1, direction)
@@ -214,9 +201,9 @@ for index in range(starting_instant, ending_instant):
 
     mu_i_minus1_1_up = mu_i_minus1_1_low = mu_i_minus1_2_up = mu_i_minus1_2_low = None  
     
-    print("Printing results\n")
+    # print("Printing results\n")
     print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
-    print(f"mu_i_1 = [{mu_i_1_low}, {mu_i_1_up}], mu_i_2 = [{mu_i_2_low}, {mu_i_2_up}]")
+    print(f"mu_i_1 = [{mu_i_1_low}, {mu_i_1_up}], mu_i_2 = [{mu_i_2_low}, {mu_i_2_up}]\n")
 
     if index != starting_instant:
         if Hp_act_minus1.shape[0] > 0 and hp_act_minus1.shape[0] > 0:
@@ -231,60 +218,16 @@ for index in range(starting_instant, ending_instant):
         if Hp_act_minus1.shape[0] > 3 and hp_act_minus1.shape[0] > 3:
             mu_i_minus1_2_low = hp_act_minus1[3] / Hp_act_minus1[3, 1] if Hp_act_minus1[3, 1] != 0 else None  # Evita None
 
-        print(f"mu_i_minus1_1 = [{mu_i_minus1_1_low}, {mu_i_minus1_1_up}], mu_i_minus1_2 = [{mu_i_minus1_2_low}, {mu_i_minus1_2_up}]\n")
+        # print(f"mu_i_minus1_1 = [{mu_i_minus1_1_low}, {mu_i_minus1_1_up}], mu_i_minus1_2 = [{mu_i_minus1_2_low}, {mu_i_minus1_2_up}]\n")
 
     else:
         continue
-
-    
-
-    if index == 453 or index == 454:
-        print(f"\n🚀 Iteration {index}: Debugging Hp, hp, and vertices")
-
-        print(f"Hp shape: {Hp.shape}, hp shape: {hp.shape}")
-        print(f"Hp:\n{Hp}")
-        print(f"hp:\n{hp}")
-
-        print(f"vertex.shape: {vertex.shape}")
-        print(f"vertex:\n{vertex}")
-
-        print(f"vertex_i.shape: {vertex_i.shape}")
-        print(f"vertex_i:\n{vertex_i}")
-
-        print(f"mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
-        print(f"mu_i_minus1_1 = [{mu_i_minus1_1_low}, {mu_i_minus1_1_up}], mu_i_minus1_2 = [{mu_i_minus1_2_low}, {mu_i_minus1_2_up}]")
-
-
-        print(f"A_i_minus1.shape: {A_i_minus1.shape}, b_i_minus1.shape: {b_i_minus1.shape}")
-        print(f"A_i_minus1:\n{A_i_minus1}")
-        print(f"b_i_minus1:\n{b_i_minus1}")
-
-        print(f"A_i_minus2.shape: {A_i_minus2.shape}, b_i_minus.shape: {b_i_minus2.shape}")
-        print(f"A_i_minus2:\n{A_i_minus2}")
-        print(f"b_i_minus2:\n{b_i_minus2}")
-
-        print(f"A.shape: {A.shape}, b.shape: {b.shape}")
-        print(f"A:\n{A}")
-        print(f"b:\n{b}")
-
-    condition_number = np.linalg.cond(A)
-    print(f"Iteration {index}: Condition number of A = {condition_number}")
-    print(f"Iteration {index}: Directions used: {direction}")
-    print(f"Iteration {index}: Vertices = {compute_vertices(Hp, hp)}")
-
-    print(f"Iteration {index}: Verifica intersezione manuale")
-    print(f"Expected intersection: X[{max(mu_i_1_low, mu_i_minus1_1_low)}, {min(mu_i_1_up, mu_i_minus1_1_up)}]")
-    print(f"Computed theta_i: X[{mu_1_low}, {mu_1_up}]")
-    print(f"Expected intersection: Y[{max(mu_i_2_low, mu_i_minus1_2_low)}, {min(mu_i_2_up, mu_i_minus1_2_up)}]")
-    print(f"Computed theta_i: Y[{mu_2_low}, {mu_2_up}]")
-    vertex_debug = compute_vertices(A, b)
-    print(f"Iteration {index}: vertex_debug = {vertex_debug}")
 
 
     A_i_minus2 = Hp
     b_i_minus2 = hp
     b_i_minus2 = np.atleast_2d(b_i_minus2).T
-    print(b_i_minus2.shape)
+
 
 
 

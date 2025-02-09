@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # # # # ============================================================================================== # # #
 
 
-file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_18_2024_14_43_23.csv'
+# file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_18_2024_14_43_23.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_18_2024_14_52_47.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_10_2025_14_35_50.csv'  # noise_up = 0.05
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_10_2025_14_39_57.csv'  # noise_up = 0.5
@@ -29,7 +29,7 @@ file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_13_2025_17_10_42.csv' # uniform noise not centered
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_13_2025_17_13_40.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_12_16_2024_16_59_04.csv'
-# file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_14_2025_18_20_50.csv'
+file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_14_2025_18_20_50.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_13_2025_17_04_25.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_17_2025_14_54_47.csv'
 # file_path = '/home/domenico/DART_QDP/src/racecar_pkg/DATA/car_1_Datarecording_01_20_2025_10_46_12.csv'
@@ -90,7 +90,7 @@ mu_2_values = []
 
 
 
-starting_instant = 3
+starting_instant = 1500
 ending_instant = len(df)
 
 F_0_minus2, G_0_minus2 = continuous_matrices_2(starting_instant - 2, steering_input, vx, vy, w, tau) # Maps F and G in continuos time
@@ -128,34 +128,29 @@ for index in range(starting_instant, ending_instant):
 
     ## The inequality to solve is: - H * G * mu <= h_d - H * x_discr + H * F
     ## Grouping the terms: A = - H * G and b = h_d - H * x_discr + H * F
-    ## Finally:  A * mu <= blen(df)
+    ## Finally:  A * mu <= b
 
 
     A_i_minus1 = - H @ g_discr_minus_1
     b_i_minus1 = h_d - H @ state_discr_minus_1 + H @ f_dicr_minus_1
 
-    # print(A_i_minus1.shape)
     A = np.concatenate([A_i_minus1, A_i_minus2])
     b = np.concatenate([b_i_minus1, b_i_minus2])
 
-    # print(f"A_shape = {A.shape}, b_shape = {b.shape}")
-
     vertex = compute_vertices(A, b)
     vertex_actual = compute_vertices(A_i_minus1, b_i_minus1)
-    # Cicles for checking vetex vector dimension 
 
     if len(vertex) == 0:
-        # print(f"Warning: No vertex found at iteration {index}. Skipping this iteration.")
         continue  # Skip this iteration to avoid errors
+    
     vertex = np.array(vertex)
-    # print(vertex.shape)
 
     if len(vertex_actual) == 0:
         continue
+
     vertex_actual = np.array(vertex_actual)
 
     if vertex.shape[1] == 0:
-        # print(f"⚠️  Iteration {index}: Vertex is empty (shape={vertex.shape}), skipping iteration.")
         continue
 
     if vertex_actual.shape[1] == 0:
@@ -163,7 +158,6 @@ for index in range(starting_instant, ending_instant):
 
     if vertex.ndim > 2:
         vertex = vertex.squeeze(-1)
-    # print(f"Debug: vertex.shape = {vertex.shape}")
 
     if vertex_actual.ndim > 2:
         vertex_actual = vertex_actual.squeeze(-1)
@@ -201,9 +195,8 @@ for index in range(starting_instant, ending_instant):
         mu_actual_2_low = hp_actual[3] / Hp_actual[3, 1] if Hp_actual[3, 1] != 0 else None  # Avoid None
 
     print(f"Iteration {index} --> mu_1 = [{mu_1_low}, {mu_1_up}], mu_2 = [{mu_2_low}, {mu_2_up}]")
-    # print(f"Iteration {index} --> mu_1_act = [{mu_actual_1_low}, {mu_actual_1_up}], mu_2_act = [{mu_actual_2_low}, {mu_actual_2_up}]\n")
-    # print(f"Hp_act = {hp}\n"
-    #       f"hp_act = {hp_actual}\n")
+    print(f"               mu_1_act = [{mu_actual_1_low}, {mu_actual_1_up}], mu_2_act = [{mu_actual_2_low}, {mu_actual_2_up}]\n")
+
     
     if None not in [mu_1_low, mu_1_up, mu_2_low, mu_2_up]:
         ax.clear()
@@ -212,6 +205,7 @@ for index in range(starting_instant, ending_instant):
         ax.set_xlim(0.6, 1.5)
         ax.set_ylim(0.6, 1.5)
         ax.set_title(
+                    f"Iteration = {index - starting_instant}\n"
                     rf"$\mu_f \in [{mu_1_low:.3f}, {mu_1_up:.3f}]$" "\n" 
                     rf"$\mu_r \in [{mu_2_low:.3f}, {mu_2_up:.3f}]$"
                     )
@@ -230,14 +224,13 @@ for index in range(starting_instant, ending_instant):
             ax.fill_betweenx([mu_actual_2_low, mu_actual_2_up], mu_actual_1_low, mu_actual_1_up, color='blue', alpha=0.2, label=r'$\Delta_k$')
 
         ax.legend()
-        plt.pause(0.00000005)  
+        plt.pause(0.05)  
 
 
     A_i_minus2 = Hp
     b_i_minus2 = hp
     b_i_minus2 = np.atleast_2d(b_i_minus2).T
-    # print(A_i_minus2.shape)
-    # print(b_i_minus2.shape)
+
 
 plt.ioff()
 plt.show()
